@@ -2,6 +2,7 @@ package com.hskl.sanfrancircuitbreakers.controller;
 
 import com.hskl.sanfrancircuitbreakers.models.Order;
 import com.hskl.sanfrancircuitbreakers.repo.OrderRepo;
+import com.hskl.sanfrancircuitbreakers.services.OrderService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,16 +20,33 @@ public class OrderController {
 
     @Autowired
     private OrderRepo orderRepo;
+    @Autowired
+    private OrderService orderService;
 
     // Gibt alle Bestellungen zurück
     @CircuitBreaker(name = "getAllOrdersCB", fallbackMethod = "fallbackGetAll")
-    @GetMapping
+    @GetMapping("nocache")
     public ResponseEntity<List<Order>> getAllOrders(@RequestParam(required = false) Boolean fail) {
         if (Boolean.TRUE.equals(fail)) {
             throw new RuntimeException("Manuell ausgelöster Testfehler 🚨");
         }
 
         List<Order> orders = orderRepo.findAll();
+        if (orders.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
+        return new ResponseEntity<>(orders, HttpStatus.OK);
+    }
+
+    // Gibt alle Bestellungen zurück
+    @CircuitBreaker(name = "getAllOrdersCB", fallbackMethod = "fallbackGetAll")
+    @GetMapping("cache")
+    public ResponseEntity<List<Order>> getAllOrders2(@RequestParam(required = false) Boolean fail) {
+        if (Boolean.TRUE.equals(fail)) {
+            throw new RuntimeException("Manuell ausgelöster Testfehler 🚨");
+        }
+
+        List<Order> orders = orderService.getAllOrders();
         if (orders.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
@@ -95,3 +113,5 @@ public class OrderController {
         return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 }
+
+
